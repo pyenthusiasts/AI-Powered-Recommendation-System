@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'recommendation-api'
+    static_configs:
+      - targets: ['recommendation-api:8000']
+    metrics_path: '/metrics'
