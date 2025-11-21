@@ -1,4 +1,13 @@
-"""Sample data generator for testing and demos."""
+"""Sample data generator for DEVELOPMENT and TESTING only.
+
+WARNING: This module generates synthetic test data and should NOT be used in production.
+For production use, import real data using:
+- /data/import API endpoint
+- CSVDataLoader or JSONDataLoader from utils.data_loader
+- Direct database import via the repository layer
+
+See utils/data_loader.py for production data loading utilities.
+"""
 
 import random
 from datetime import datetime, timedelta
@@ -11,140 +20,90 @@ from recommendation_system.schemas import (
 )
 
 
-def generate_movies(n: int = 50) -> list[ItemCreate]:
-    """Generate sample movie data."""
-    genres = ["Action", "Comedy", "Drama", "Horror", "Sci-Fi", "Romance", "Thriller", "Animation"]
-    directors = ["Christopher Nolan", "Steven Spielberg", "Martin Scorsese", "Quentin Tarantino",
-                 "Denis Villeneuve", "Greta Gerwig", "Jordan Peele", "Bong Joon-ho"]
+def _generate_test_items(
+    item_type: ItemType,
+    n: int,
+    prefix: str,
+    categories: list[str],
+) -> list[ItemCreate]:
+    """Generate test items for a specific type.
 
-    movies = []
+    Args:
+        item_type: The type of items to generate.
+        n: Number of items to generate.
+        prefix: Prefix for item IDs.
+        categories: List of category names for the items.
+
+    Returns:
+        List of ItemCreate objects.
+    """
+    items = []
     for i in range(n):
-        genre = random.choice(genres)
-        movies.append(ItemCreate(
-            item_id=f"movie_{i+1}",
-            title=f"The {random.choice(['Great', 'Amazing', 'Incredible', 'Dark', 'Lost'])} "
-                  f"{random.choice(['Adventure', 'Journey', 'Secret', 'Night', 'Dream'])} {i+1}",
-            item_type=ItemType.MOVIE,
-            description=f"A {genre.lower()} film about extraordinary events and memorable characters.",
+        category = random.choice(categories)
+        items.append(ItemCreate(
+            item_id=f"{prefix}_{i+1}",
+            title=f"Test {item_type.value.title()} {i+1}",
+            item_type=item_type,
+            description=f"Test {item_type.value} item in {category} category for development/testing.",
             features={
-                "genre": genre,
-                "year": random.randint(1990, 2024),
-                "duration_minutes": random.randint(90, 180),
-                "rating": round(random.uniform(5.0, 9.5), 1),
-            },
-            metadata={
-                "director": random.choice(directors),
-                "language": random.choice(["English", "Spanish", "French", "Korean", "Japanese"]),
-                "country": random.choice(["USA", "UK", "France", "South Korea", "Japan"]),
-            },
-        ))
-    return movies
-
-
-def generate_books(n: int = 50) -> list[ItemCreate]:
-    """Generate sample book data."""
-    genres = ["Fiction", "Non-Fiction", "Mystery", "Fantasy", "Science Fiction", "Biography", "Self-Help"]
-    authors = ["Stephen King", "J.K. Rowling", "George R.R. Martin", "Agatha Christie",
-               "Isaac Asimov", "Malcolm Gladwell", "Michelle Obama", "Yuval Noah Harari"]
-
-    books = []
-    for i in range(n):
-        genre = random.choice(genres)
-        books.append(ItemCreate(
-            item_id=f"book_{i+1}",
-            title=f"The {random.choice(['Hidden', 'Forgotten', 'Last', 'First', 'Secret'])} "
-                  f"{random.choice(['Kingdom', 'Path', 'Truth', 'Legacy', 'Code'])}",
-            item_type=ItemType.BOOK,
-            description=f"A compelling {genre.lower()} book that explores deep themes.",
-            features={
-                "genre": genre,
-                "year": random.randint(1950, 2024),
-                "pages": random.randint(150, 800),
-                "rating": round(random.uniform(3.5, 5.0), 1),
-            },
-            metadata={
-                "author": random.choice(authors),
-                "publisher": random.choice(["Penguin", "HarperCollins", "Simon & Schuster", "Random House"]),
-                "format": random.choice(["Hardcover", "Paperback", "eBook", "Audiobook"]),
-            },
-        ))
-    return books
-
-
-def generate_songs(n: int = 50) -> list[ItemCreate]:
-    """Generate sample song data."""
-    genres = ["Pop", "Rock", "Hip-Hop", "Electronic", "Jazz", "Classical", "R&B", "Country"]
-    artists = ["Taylor Swift", "Ed Sheeran", "Drake", "Beyonce", "The Weeknd",
-               "Dua Lipa", "Bad Bunny", "BTS", "Adele", "Post Malone"]
-
-    songs = []
-    for i in range(n):
-        genre = random.choice(genres)
-        songs.append(ItemCreate(
-            item_id=f"song_{i+1}",
-            title=f"{random.choice(['Midnight', 'Summer', 'Electric', 'Golden', 'Neon'])} "
-                  f"{random.choice(['Dreams', 'Love', 'Lights', 'Heart', 'Sky'])}",
-            item_type=ItemType.SONG,
-            description=f"A {genre.lower()} track with catchy melodies.",
-            features={
-                "genre": genre,
+                "category": category,
                 "year": random.randint(2000, 2024),
-                "duration_seconds": random.randint(180, 300),
-                "bpm": random.randint(80, 160),
+                "rating": round(random.uniform(3.0, 5.0), 1),
             },
             metadata={
-                "artist": random.choice(artists),
-                "album": f"Album {random.randint(1, 10)}",
-                "explicit": random.choice([True, False]),
+                "source": "test_data_generator",
+                "generated_at": datetime.utcnow().isoformat(),
             },
         ))
-    return songs
+    return items
 
 
-def generate_courses(n: int = 50) -> list[ItemCreate]:
-    """Generate sample course data."""
-    topics = ["Programming", "Data Science", "Machine Learning", "Web Development",
-              "Business", "Design", "Marketing", "Finance"]
-    platforms = ["Coursera", "Udemy", "edX", "LinkedIn Learning", "Pluralsight"]
-    levels = ["Beginner", "Intermediate", "Advanced"]
-
-    courses = []
-    for i in range(n):
-        topic = random.choice(topics)
-        courses.append(ItemCreate(
-            item_id=f"course_{i+1}",
-            title=f"{random.choice(['Complete', 'Ultimate', 'Modern', 'Practical'])} "
-                  f"{topic} {random.choice(['Masterclass', 'Bootcamp', 'Fundamentals', 'Guide'])}",
-            item_type=ItemType.COURSE,
-            description=f"Learn {topic.lower()} with hands-on projects and real-world examples.",
-            features={
-                "topic": topic,
-                "level": random.choice(levels),
-                "duration_hours": random.randint(5, 100),
-                "rating": round(random.uniform(3.5, 5.0), 1),
-            },
-            metadata={
-                "platform": random.choice(platforms),
-                "instructor": f"Professor {random.choice(['Smith', 'Johnson', 'Williams', 'Brown', 'Davis'])}",
-                "certificate": random.choice([True, False]),
-                "price": round(random.uniform(0, 200), 2),
-            },
-        ))
-    return courses
+def generate_test_movies(n: int = 50) -> list[ItemCreate]:
+    """Generate test movie data for development."""
+    categories = ["Action", "Comedy", "Drama", "Horror", "Sci-Fi", "Romance", "Thriller"]
+    return _generate_test_items(ItemType.MOVIE, n, "test_movie", categories)
 
 
-def generate_interactions(
+def generate_test_books(n: int = 50) -> list[ItemCreate]:
+    """Generate test book data for development."""
+    categories = ["Fiction", "Non-Fiction", "Mystery", "Fantasy", "Science", "Biography"]
+    return _generate_test_items(ItemType.BOOK, n, "test_book", categories)
+
+
+def generate_test_songs(n: int = 50) -> list[ItemCreate]:
+    """Generate test song data for development."""
+    categories = ["Pop", "Rock", "Hip-Hop", "Electronic", "Jazz", "Classical", "R&B"]
+    return _generate_test_items(ItemType.SONG, n, "test_song", categories)
+
+
+def generate_test_courses(n: int = 50) -> list[ItemCreate]:
+    """Generate test course data for development."""
+    categories = ["Programming", "Data Science", "Web Development", "Business", "Design"]
+    return _generate_test_items(ItemType.COURSE, n, "test_course", categories)
+
+
+def generate_test_interactions(
     user_ids: list[str],
     item_ids: list[str],
     n_per_user: int = 20,
 ) -> list[InteractionCreate]:
-    """Generate random user-item interactions."""
+    """Generate random user-item interactions for testing.
+
+    Args:
+        user_ids: List of user IDs to generate interactions for.
+        item_ids: List of item IDs available for interaction.
+        n_per_user: Average number of interactions per user.
+
+    Returns:
+        List of InteractionCreate objects.
+    """
     interactions = []
     interaction_types = list(InteractionType)
 
     for user_id in user_ids:
         # Each user interacts with a subset of items
-        sampled_items = random.sample(item_ids, min(n_per_user, len(item_ids)))
+        n_items = min(n_per_user, len(item_ids))
+        sampled_items = random.sample(item_ids, n_items)
 
         for item_id in sampled_items:
             itype = random.choice(interaction_types)
@@ -169,56 +128,78 @@ def generate_interactions(
     return interactions
 
 
-def load_sample_data(
+def load_test_data(
     data_store,
-    n_items: int = 50,
-    n_users: int = 100,
-    interactions_per_user: int = 20,
-):
-    """Load sample data into the data store.
+    n_items_per_type: int = 25,
+    n_users: int = 50,
+    interactions_per_user: int = 15,
+) -> dict:
+    """Load test data into the data store for development/testing.
+
+    WARNING: This is for DEVELOPMENT and TESTING only.
+    Do NOT use in production - use the data loader utilities instead.
 
     Args:
-        data_store: DataStore instance
-        n_items: Number of items per category
-        n_users: Number of users to create
-        interactions_per_user: Average interactions per user
+        data_store: DataStore instance to load data into.
+        n_items_per_type: Number of items to generate per category.
+        n_users: Number of test users to create.
+        interactions_per_user: Average interactions per user.
+
+    Returns:
+        Dictionary with statistics about loaded data.
     """
     from recommendation_system.schemas import UserCreate
 
-    # Generate items
+    # Generate items for each type
     all_items = []
-    all_items.extend(generate_movies(n_items))
-    all_items.extend(generate_books(n_items))
-    all_items.extend(generate_songs(n_items))
-    all_items.extend(generate_courses(n_items))
+    all_items.extend(generate_test_movies(n_items_per_type))
+    all_items.extend(generate_test_books(n_items_per_type))
+    all_items.extend(generate_test_songs(n_items_per_type))
+    all_items.extend(generate_test_courses(n_items_per_type))
 
     # Add items to store
+    items_created = 0
     for item in all_items:
         try:
             data_store.add_item(item)
+            items_created += 1
         except ValueError:
             pass  # Item already exists
 
-    # Create users
-    user_ids = [f"user_{i+1}" for i in range(n_users)]
+    # Create test users
+    user_ids = [f"test_user_{i+1}" for i in range(n_users)]
+    users_created = 0
     for user_id in user_ids:
         try:
             data_store.add_user(UserCreate(user_id=user_id))
+            users_created += 1
         except ValueError:
             pass  # User already exists
 
     # Generate and add interactions
     item_ids = [item.item_id for item in all_items]
-    interactions = generate_interactions(user_ids, item_ids, interactions_per_user)
+    interactions = generate_test_interactions(user_ids, item_ids, interactions_per_user)
 
+    interactions_created = 0
     for interaction in interactions:
         try:
             data_store.add_interaction(interaction)
+            interactions_created += 1
         except ValueError:
             pass  # Invalid interaction
 
     return {
-        "items_created": len(all_items),
-        "users_created": len(user_ids),
-        "interactions_created": len(interactions),
+        "items_created": items_created,
+        "users_created": users_created,
+        "interactions_created": interactions_created,
+        "warning": "Test data loaded - DO NOT USE IN PRODUCTION",
     }
+
+
+# Legacy aliases for backward compatibility - DEPRECATED
+generate_movies = generate_test_movies
+generate_books = generate_test_books
+generate_songs = generate_test_songs
+generate_courses = generate_test_courses
+generate_interactions = generate_test_interactions
+load_sample_data = load_test_data

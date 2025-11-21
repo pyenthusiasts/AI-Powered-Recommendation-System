@@ -1,6 +1,9 @@
 version: '3.8'
 
 services:
+  # ===========================================
+  # Main Recommendation API Service
+  # ===========================================
   recommendation-api:
     build:
       context: .
@@ -12,23 +15,34 @@ services:
       - "8000:8000"
     environment:
       - APP_ENV=production
+      - DEBUG=false
       - LOG_LEVEL=INFO
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/recommendations
       - REDIS_URL=redis://redis:6379/0
+      - CACHE_ENABLED=true
       - API_KEY_ENABLED=true
-      - API_KEY=${API_KEY:-your-secret-key}
+      - API_KEY=${API_KEY:?API_KEY is required}
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production-min-32-chars}
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_REQUESTS=100
+      - RATE_LIMIT_WINDOW=60
+      - MODEL_AUTO_SAVE=true
     volumes:
       - ./models:/app/models
       - ./data:/app/data
+      - ./logs:/app/logs
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     deploy:
       resources:
         limits:
@@ -37,7 +51,40 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+    networks:
+      - recommendation-network
 
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: recommendation-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=recommendations
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d recommendations"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    networks:
+      - recommendation-network
+
+  # ===========================================
+  # Redis Cache & Rate Limiting
+  # ===========================================
   redis:
     image: redis:7-alpine
     container_name: recommendation-redis
@@ -45,15 +92,28 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - recommendation-network
 
-  # Optional: Prometheus for metrics
+  # ===========================================
+  # Prometheus Metrics (Optional - use --profile monitoring)
+  # ===========================================
   prometheus:
     image: prom/prometheus:latest
     container_name: recommendation-prometheus
@@ -65,18 +125,26 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
     profiles:
       - monitoring
     restart: unless-stopped
+    networks:
+      - recommendation-network
 
-  # Optional: Grafana for visualization
+  # ===========================================
+  # Grafana Dashboard (Optional - use --profile monitoring)
+  # ===========================================
   grafana:
     image: grafana/grafana:latest
     container_name: recommendation-grafana
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
@@ -84,8 +152,15 @@ services:
     profiles:
       - monitoring
     restart: unless-stopped
+    networks:
+      - recommendation-network
+
+networks:
+  recommendation-network:
+    driver: bridge
 
 volumes:
+  postgres_data:
   redis_data:
   prometheus_data:
   grafana_data:
